@@ -244,6 +244,38 @@ void Usage()
     std::cerr << "Usage: logconvert filename" << std::endl;
 }
 
+void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>& list)
+{
+    std::string heading;
+    std::string units;
+    unsigned    bits;
+    for (const auto& j : list)
+    {
+	const auto& list = j.List();
+	if (j.Num() == 1)
+	{
+	    bits = list[5].AsNumber();
+	}
+	if (j.Num() == 4)
+	{
+	    heading = list[0].AsString();
+	    units = list[1].AsString();
+	}
+	if (j.Num() == 6)
+	{
+	    std::filesystem::path newName = fname;
+	    newName.replace_extension(list[3].AsString());
+	    std::ifstream binf(newName, std::ios_base::in | std::ios_base::binary);
+	    if (binf)
+	    {
+		std::cerr << "Opened: " << newName << std::endl;
+		std::cerr << "Content: " << heading << " Unit: " << units << std::endl;
+		ReadSome(binf, 256, bits);
+	    }
+	}
+    }
+}
+
 int main(int argc, char** argv)
 {
     std::filesystem::path fname;
@@ -267,36 +299,7 @@ int main(int argc, char** argv)
 	{
 	    if (i.first >= 0x300 && i.first <= 0x3ff)
 	    {
-		std::string heading;
-		std::string units;
-		unsigned    bits;
-		for (const auto& j : i.second.List())
-		{
-		    const auto& list = j.List();
-		    if (j.Num() == 1)
-		    {
-			bits = list[5].AsNumber();
-		    }
-		    if (j.Num() == 4)
-		    {
-			heading = list[0].AsString();
-			units = list[1].AsString();
-		    }
-		    if (j.Num() == 6)
-		    {
-			std::filesystem::path newName = fname;
-			newName.replace_extension(list[3].AsString());
-			std::ifstream binf(newName,
-			                   std::ios_base::in | std::ios_base::binary);
-			if (binf)
-			{
-			    std::cerr << "Opened: " << newName << std::endl;
-			    std::cerr << "Content: " << heading << " Unit: " << units
-			              << std::endl;
-			    ReadSome(binf, 256, bits);
-			}
-		    }
-		}
+		ProcessFile(fname, i.second.List());
 	    }
 	}
     }
