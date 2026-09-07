@@ -1,3 +1,4 @@
+#include <bit>
 #include <cassert>
 #include <cctype>
 #include <cstring>
@@ -218,7 +219,7 @@ void ReadLDD(TextStream& in)
     }
 }
 
-void ReadSome(std::ifstream& f, const size_t bytes, const unsigned bits)
+void ReadSome(std::ifstream& f, const size_t bytes, const unsigned bits, float scale)
 {
     constexpr size_t BUFSIZE = 1024;
     char             buf[BUFSIZE];
@@ -227,11 +228,13 @@ void ReadSome(std::ifstream& f, const size_t bytes, const unsigned bits)
     unsigned wordSize = bits / 8;
     assert(((bits & 7) == 0) && ((bits & (bits - 1)) == 0));
     assert(bits <= 32);
+    assert(scale > 0);
     for (size_t i = 0; i < bytes; i += wordSize)
     {
-	unsigned x = 0;
+	int x = 0;
 	std::memcpy(&x, &buf[i], wordSize);
-	std::cout << std::format("{:0{}x}", x, wordSize * 2) << " ";
+	double v = x * scale;
+	std::cout << v << " ";
 	if (((i + wordSize - 1) & 15) == 15)
 	{
 	    std::cout << std::endl;
@@ -249,13 +252,22 @@ void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>&
     std::string heading;
     std::string units;
     unsigned    bits;
+    float       scale;
+
     for (const auto& j : list)
     {
 	const auto& list = j.List();
+	// Type properties
 	if (j.Num() == 1)
 	{
 	    bits = list[5].AsNumber();
 	}
+	// Scaling
+	if (j.Num() == 3)
+	{
+	    scale = std::bit_cast<float>(list[3].AsNumber());
+	}
+	// Description
 	if (j.Num() == 4)
 	{
 	    heading = list[0].AsString();
@@ -268,9 +280,10 @@ void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>&
 	    std::ifstream binf(newName, std::ios_base::in | std::ios_base::binary);
 	    if (binf)
 	    {
-		std::cerr << "Opened: " << newName << std::endl;
-		std::cerr << "Content: " << heading << " Unit: " << units << std::endl;
-		ReadSome(binf, 256, bits);
+		std::cout << "Opened: " << newName << std::endl;
+		std::cout << "Content: " << heading << " Unit: " << units
+		          << " Scale:" << scale << std::endl;
+		ReadSome(binf, 256, bits, scale);
 	    }
 	}
     }
