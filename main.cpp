@@ -221,15 +221,16 @@ void ReadLDD(TextStream& in)
 
 void ReadSome(std::ifstream& f, const size_t bytes, const unsigned bits, float scale)
 {
-    constexpr size_t BUFSIZE = 1024;
+    constexpr size_t BUFSIZE = 8192;
     char             buf[BUFSIZE];
     assert(bytes <= BUFSIZE);
     f.read(buf, bytes);
+    size_t   nread = f.gcount();
     unsigned wordSize = bits / 8;
     assert(((bits & 7) == 0) && ((bits & (bits - 1)) == 0));
     assert(bits <= 32);
     assert(scale > 0);
-    for (size_t i = 0; i < bytes; i += wordSize)
+    for (size_t i = 0; i < nread; i += wordSize)
     {
 	int x = 0;
 	std::memcpy(&x, &buf[i], wordSize);
@@ -247,7 +248,8 @@ void Usage()
     std::cerr << "Usage: logconvert filename" << std::endl;
 }
 
-void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>& list)
+void ProcessFile(const std::filesystem::path& fname, const std::string& filter,
+                 const std::vector<CSVList>& list)
 {
     std::string heading;
     std::string units;
@@ -276,14 +278,18 @@ void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>&
 	if (j.Num() == 6)
 	{
 	    std::filesystem::path newName = fname;
-	    newName.replace_extension(list[3].AsString());
-	    std::ifstream binf(newName, std::ios_base::in | std::ios_base::binary);
-	    if (binf)
+	    std::string           ext = list[3].AsString();
+	    if (filter == "" || filter == ext)
 	    {
-		std::cout << "Opened: " << newName << std::endl;
-		std::cout << "Content: " << heading << " Unit: " << units
-		          << " Scale:" << scale << std::endl;
-		ReadSome(binf, 256, bits, scale);
+		newName.replace_extension(ext);
+		std::ifstream binf(newName, std::ios_base::in | std::ios_base::binary);
+		if (binf)
+		{
+		    std::cout << "Opened: " << newName << std::endl;
+		    std::cout << "Content: " << heading << " Unit: " << units
+		              << " Scale:" << scale << std::endl;
+		    ReadSome(binf, 6144, bits, scale);
+		}
 	    }
 	}
     }
@@ -291,17 +297,22 @@ void ProcessFile(const std::filesystem::path& fname, const std::vector<CSVList>&
 
 int main(int argc, char** argv)
 {
-    std::filesystem::path fname;
-
-    if (argc != 2)
+    if (argc < 2)
     {
 	Usage();
 	exit(1);
     }
 
+    std::filesystem::path fname;
     if (argc > 1)
     {
 	fname = argv[1];
+    }
+
+    std::string filter;
+    if (argc > 2)
+    {
+	filter = argv[2];
     }
 
     try
@@ -312,7 +323,7 @@ int main(int argc, char** argv)
 	{
 	    if (i.first >= 0x300 && i.first <= 0x3ff)
 	    {
-		ProcessFile(fname, i.second.List());
+		ProcessFile(fname, filter, i.second.List());
 	    }
 	}
     }
