@@ -58,3 +58,12 @@ void TextStream::Open()
     m_file.open(m_name);
     m_file.exceptions(old);
 }
+
+void BinaryStream::Open()
+{
+    // Open file, throw on failure.
+    auto old = m_file.exceptions();
+    m_file.exceptions(old | std::ifstream::failbit);
+    m_file.open(m_name, std::ios_base::in | std::ios_base::binary);
+    m_file.exceptions(old);
+}

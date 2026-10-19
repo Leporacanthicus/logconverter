@@ -221,7 +221,7 @@ void ReadLDD(TextStream& in)
 
 void ReadSome(std::ifstream& f, const size_t bytes, const unsigned bits, float scale)
 {
-    constexpr size_t BUFSIZE = 8192;
+    constexpr size_t BUFSIZE = 8192 * 8;
     char             buf[BUFSIZE];
     assert(bytes <= BUFSIZE);
     f.read(buf, bytes);
@@ -288,11 +288,48 @@ void ProcessFile(const std::filesystem::path& fname, const std::string& filter,
 		    std::cout << "Opened: " << newName << std::endl;
 		    std::cout << "Content: " << heading << " Unit: " << units
 		              << " Scale:" << scale << std::endl;
-		    ReadSome(binf, 6144, bits, scale);
+		    ReadSome(binf, 16384, bits, scale);
 		}
 	    }
 	}
     }
+}
+
+void ReadLD(BinaryStream& in)
+{
+    struct Header
+    {
+	int      unk1;
+	int      headerLen;
+	int      unk2;
+	int      unk3;
+	int      zero1[4];
+	int      zero2;
+	int      unk4;
+	int      zero3;
+	int      unk5;
+	int      zero4[4];
+	int      unk6;
+	int      unk7;
+	uint16_t unk8;
+	char     product[6];
+	int      unk8b;
+	int      unk9;
+	int      unk9b;
+	uint16_t unk10;
+	char     date[32];
+	char     time[32];
+	char     name[64];
+	char     raceclass[64];
+	char     vehicle[64];
+	char     track[64];
+    } hdr;
+
+    hdr = in.Read<Header>();
+    std::cout << "Header size: " << sizeof(Header) << std::endl;
+    std::cout << "Date: " << hdr.date << " Time: " << hdr.time << std::endl;
+    std::cout << "Name: " << hdr.name << " Class: " << hdr.raceclass << std::endl;
+    std::cout << "Vehicle: " << hdr.vehicle << " Track: " << hdr.track << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -317,14 +354,22 @@ int main(int argc, char** argv)
 
     try
     {
-	TextStream in(fname);
-	ReadLDD(in);
-	for (const auto& i : lddMap)
+	if (fname.extension() == ".ldd")
 	{
-	    if (i.first >= 0x300 && i.first <= 0x3ff)
+	    TextStream in(fname);
+	    ReadLDD(in);
+	    for (const auto& i : lddMap)
 	    {
-		ProcessFile(fname, filter, i.second.List());
+		if (i.first >= 0x300 && i.first <= 0x3ff)
+		{
+		    ProcessFile(fname, filter, i.second.List());
+		}
 	    }
+	}
+	else if (fname.extension() == ".ld")
+	{
+	    BinaryStream in(fname);
+	    ReadLD(in);
 	}
     }
     catch (std::exception& e)
