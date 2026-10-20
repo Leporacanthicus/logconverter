@@ -297,10 +297,13 @@ void ProcessFile(const std::filesystem::path& fname, const std::string& filter,
 
 void ReadLD(BinaryStream& in)
 {
+    struct Header1
+    {
+	int unk1;
+	int headerLen;
+    };
     struct Header
     {
-	int      unk1;
-	int      headerLen;
 	int      unk2;
 	int      unk3;
 	int      zero1[4];
@@ -323,13 +326,36 @@ void ReadLD(BinaryStream& in)
 	char     raceclass[64];
 	char     vehicle[64];
 	char     track[64];
-    } hdr;
+	char     unk11[17 * 64];
+	char     unk12[6];
+	char     session[128];
+	char     unk13[128];
+	char     versinfo[256];
+    };
 
-    hdr = in.Read<Header>();
+    struct LogSource
+    {
+	int  type;
+	int  len;
+	int  unk1;
+	int  unk2;
+	int  unk3;
+	char sourceDevice[100];
+    };
+
+    Header1 h1 = in.Read<Header1>();
+    Header  hdr = in.Read<Header>(h1.headerLen - sizeof(Header1));
     std::cout << "Header size: " << sizeof(Header) << std::endl;
+    std::cout << "HeaderLen: " << h1.headerLen << std::endl;
     std::cout << "Date: " << hdr.date << " Time: " << hdr.time << std::endl;
     std::cout << "Name: " << hdr.name << " Class: " << hdr.raceclass << std::endl;
     std::cout << "Vehicle: " << hdr.vehicle << " Track: " << hdr.track << std::endl;
+    std::cout << "Session:" << hdr.session << std::endl;
+    std::cout << "Copyright: " << hdr.versinfo << std::endl;
+
+    in.Seek(h1.headerLen);
+    LogSource s = in.Read<LogSource>();
+    std::cout << "Source: " << s.sourceDevice << std::endl;
 }
 
 int main(int argc, char** argv)

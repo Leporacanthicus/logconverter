@@ -1,8 +1,9 @@
 #ifndef FILE_H__
 #define FILE_H__
 
-#include <string>
+#include <cstdint>
 #include <fstream>
+#include <string>
 
 class TextStream
 {
@@ -36,10 +37,16 @@ public:
     template<typename T>
     T Read()
     {
+	return Read<T>(sizeof(T));
+    }
+    template<typename T>
+    T Read(size_t size)
+    {
 	T data{};
-	m_file.read(reinterpret_cast<char*>(&data), sizeof(data));
+	m_file.read(reinterpret_cast<char*>(&data), size);
 	return data;
     }
+    void Seek(uint64_t offset);
 
 private:
     std::ifstream m_file;

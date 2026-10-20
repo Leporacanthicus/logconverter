@@ -67,3 +67,8 @@ void BinaryStream::Open()
     m_file.open(m_name, std::ios_base::in | std::ios_base::binary);
     m_file.exceptions(old);
 }
+
+void BinaryStream::Seek(uint64_t offset)
+{
+    m_file.seekg(offset);
+}
